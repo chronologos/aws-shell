@@ -6,9 +6,9 @@ from six import with_metaclass
 from abc import ABCMeta, abstractmethod
 
 from prompt_toolkit import prompt
-from prompt_toolkit.contrib.completers import WordCompleter, PathCompleter
-
+from prompt_toolkit.contrib.completers import PathCompleter
 from awsshell.utils import FSLayer
+from awsshell.selectmenu import select_prompt
 
 
 class InteractionException(Exception):
@@ -66,7 +66,7 @@ class SimpleSelect(Interaction):
     used as is.
     """
 
-    def __init__(self, model, prompt_msg, prompter=prompt):
+    def __init__(self, model, prompt_msg, prompter=select_prompt):
         super(SimpleSelect, self).__init__(model, prompt_msg)
         self._prompter = prompter
 
@@ -75,17 +75,12 @@ class SimpleSelect(Interaction):
             raise InteractionException('SimpleSelect expects a non-empty list')
         if self._model.get('Path') is not None:
             display_data = jmespath.search(self._model['Path'], data)
-            completer = WordCompleter(
-                display_data,
-                sentence=True,
-                ignore_case=True
-            )
-            option_dict = dict(zip(display_data, data))
-            selected = self._prompter('%s ' % self.prompt, completer=completer)
-            return option_dict[selected]
+            result = self._prompter('%s ' % self.prompt, display_data)
+            (selected, index) = result
+            return data[index]
         else:
-            cmpltr = WordCompleter(data, ignore_case=True, sentence=True)
-            return self._prompter('%s ' % self.prompt, completer=cmpltr)
+            (selected, index) = self._prompter('%s ' % self.prompt, data)
+            return selected
 
 
 class SimplePrompt(Interaction):
